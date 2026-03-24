@@ -2,14 +2,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// In production (Railway), use /data volume for persistence.
-// Locally, store next to server.js.
 const DB_DIR = process.env.DB_PATH || __dirname;
-
-// Make sure the directory exists (important for Railway volume)
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
 const db = new Database(path.join(DB_DIR, 'recyclepro.db'));
 
@@ -83,6 +77,16 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- Opening stock override: base balance per material type
+  -- Stock formula = opening_bags + SUM(production) - SUM(sales)
+  CREATE TABLE IF NOT EXISTS opening_stock (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    granule_type TEXT NOT NULL UNIQUE,
+    bags INTEGER NOT NULL DEFAULT 0,
+    note TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   INSERT OR IGNORE INTO material_types (name, sort_order) VALUES ('LD', 1);
   INSERT OR IGNORE INTO material_types (name, sort_order) VALUES ('BLD', 2);
   INSERT OR IGNORE INTO material_types (name, sort_order) VALUES ('HM', 3);
@@ -97,10 +101,7 @@ db.exec(`
   INSERT OR IGNORE INTO godowns (name, sort_order) VALUES ('B', 2);
   INSERT OR IGNORE INTO godowns (name, sort_order) VALUES ('C', 3);
 
-  CREATE TABLE IF NOT EXISTS company_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );
+  CREATE TABLE IF NOT EXISTS company_settings (key TEXT PRIMARY KEY, value TEXT);
 
   INSERT OR IGNORE INTO company_settings (key, value) VALUES ('name', 'My Recycling Company');
   INSERT OR IGNORE INTO company_settings (key, value) VALUES ('address', '');
